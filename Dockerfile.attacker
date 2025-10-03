@@ -1,0 +1,48 @@
+FROM debian:jessie
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Use Debian archive repositories
+RUN echo "deb http://archive.debian.org/debian/ jessie main" > /etc/apt/sources.list && \
+    echo "deb http://archive.debian.org/debian-security/ jessie/updates main" >> /etc/apt/sources.list
+
+# Install attacker tools with old OpenSSL/Python that supports SSLv3
+RUN apt-get update && apt-get install -y --allow-unauthenticated \
+    python \
+    python-pip \
+    python-dev \
+    python-scapy \
+    tcpdump \
+    tshark \
+    openssl \
+    libssl-dev \
+    curl \
+    wget \
+    net-tools \
+    iputils-ping \
+    dnsutils \
+    vim \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python SSL module explicitly (Debian Jessie's has SSLv3 support)
+# The python-openssl package in Jessie includes SSLv3
+RUN apt-get update && apt-get install -y --allow-unauthenticated \
+    python-openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages for attack scripts
+RUN pip install requests pycrypto || true
+
+# Verify Python has ssl module with SSLv3
+RUN python -c "import ssl; print 'SSL module loaded'; print dir(ssl)" || echo "SSL import failed"
+
+# Create attack directory
+RUN mkdir -p /attack
+
+# Set working directory
+WORKDIR /attack
+
+# Keep container running
+CMD ["tail", "-f", "/dev/null"]

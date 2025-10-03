@@ -1,0 +1,63 @@
+services:
+  # Vulnerable SSLv3 server
+  vulnerable-server:
+    build: .
+    container_name: poodle_vulnerable_server
+    hostname: vulnerable.local
+    ports:
+      - "8443:443"  # Map to port 8443 on host to avoid conflicts
+    networks:
+      poodle_network:
+        ipv4_address: 172.25.0.10
+    restart: unless-stopped
+    volumes:
+      - ./logs:/var/log/apache2
+
+  # Client machine (victim)
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: poodle_client
+    hostname: client.local
+    networks:
+      poodle_network:
+        ipv4_address: 172.25.0.20
+    restart: unless-stopped
+    depends_on:
+      - vulnerable-server
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./client-scripts:/client-scripts
+
+  # Attacker machine (MITM position)
+  attacker:
+    build:
+      context: .
+      dockerfile: Dockerfile.attacker
+    container_name: poodle_attacker
+    hostname: attacker.local
+    networks:
+      poodle_network:
+        ipv4_address: 172.25.0.30
+    restart: unless-stopped
+    depends_on:
+      - vulnerable-server
+      - client
+    tty: true
+    stdin_open: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./attacker-scripts:/attack
+      - ./captures:/captures
+
+networks:
+  poodle_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/16

@@ -1,0 +1,38 @@
+FROM debian:jessie
+
+# Prevent interactive prompts during installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Use Debian archive repositories (Jessie is old)
+RUN echo "deb http://archive.debian.org/debian/ jessie main" > /etc/apt/sources.list && \
+    echo "deb http://archive.debian.org/debian-security/ jessie/updates main" >> /etc/apt/sources.list
+
+# Install client tools with old OpenSSL that supports SSLv3
+RUN apt-get update && apt-get install -y --allow-unauthenticated \
+    curl \
+    wget \
+    python \
+    python-pip \
+    openssl \
+    net-tools \
+    iputils-ping \
+    dnsutils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages
+RUN pip install requests
+
+# Create client scripts directory
+RUN mkdir -p /client-scripts
+
+# Copy client scripts
+COPY client-scripts/ /client-scripts/
+
+# Make scripts executable
+RUN chmod +x /client-scripts/*.sh
+
+# Set working directory
+WORKDIR /client-scripts
+
+# Keep container running
+CMD ["tail", "-f", "/dev/null"]
